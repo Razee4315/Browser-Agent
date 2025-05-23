@@ -130,6 +130,5 @@ For support, email us at [saqlainrazee@gmail.com](mailto:saqlainrazee@gmail.com)
 
 **[⭐ Star this repo](https://github.com/razee4315/browser-automation-agent) if you find it useful!**
 
-*Built with ❤️ by the Browser Automation Team*
 
 </div>

@@ -14,8 +14,10 @@ const automationSessions = new Map<string, {
 }>();
 
 export async function POST(request: NextRequest) {
+  console.log('[API /start] Received POST request');
   try {
     const { prompt, headless = true, apiKey } = await request.json();
+    console.log(`[API /start] Prompt: "${prompt}", Headless: ${headless}, API Key (present): ${!!apiKey}`);
 
     if (!prompt) {
       return NextResponse.json(
@@ -35,10 +37,13 @@ export async function POST(request: NextRequest) {
     process.env.GEMINI_API_KEY = apiKey;
 
     // Generate automation plan using Gemini
+    console.log('[API /start] Generating automation plan...');
     const plan = await generateAutomationPlan(prompt);
+    console.log('[API /start] Automation plan generated:', JSON.stringify(plan, null, 2));
     
     // Create session
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    console.log(`[API /start] Created session ID: ${sessionId}`);
     automationSessions.set(sessionId, {
       id: sessionId,
       status: 'running',
@@ -47,17 +52,19 @@ export async function POST(request: NextRequest) {
       startedAt: new Date().toISOString()
     });
 
-    // Start browser automation in background
+    // Start browser automation in background (DO NOT await this call)
+    console.log(`[API /start] Starting executeBrowserPlan for session ${sessionId} in the background.`);
     executeBrowserPlan(sessionId, plan, headless).catch(error => {
-      console.error('Background automation failed:', error);
+      console.error(`[API /start] Background executeBrowserPlan for session ${sessionId} threw an unhandled error:`, error);
       const session = automationSessions.get(sessionId);
       if (session) {
         session.status = 'failed';
-        session.error = error.message;
+        session.error = error.message || 'Unknown background error';
         session.completedAt = new Date().toISOString();
       }
     });
 
+    console.log(`[API /start] Responding to client for session ${sessionId}.`);
     return NextResponse.json({
       sessionId,
       plan,
@@ -66,7 +73,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error starting automation:', error);
+    console.error('[API /start] Error in POST handler:', error);
     return NextResponse.json(
       { error: 'Failed to start automation' },
       { status: 500 }
@@ -75,11 +82,16 @@ export async function POST(request: NextRequest) {
 }
 
 async function executeBrowserPlan(sessionId: string, plan: any, headless: boolean) {
+  console.log(`[executeBrowserPlan ${sessionId}] Starting for session.`);
   const browser = getBrowserInstance();
+  let overallSuccess = false;
   
   try {
+    console.log(`[executeBrowserPlan ${sessionId}] Initializing browser (headless: ${headless})...`);
     await browser.initialize(headless);
+    console.log(`[executeBrowserPlan ${sessionId}] Browser initialized. Executing plan...`);
     const results = await browser.executePlan(plan.actions);
+    console.log(`[executeBrowserPlan ${sessionId}] Plan execution completed. Success: ${results.success}`);
     
     const session = automationSessions.get(sessionId);
     if (session) {
@@ -88,18 +100,24 @@ async function executeBrowserPlan(sessionId: string, plan: any, headless: boolea
       session.completedAt = new Date().toISOString();
       if (!results.success) {
         session.error = results.error;
+        console.error(`[executeBrowserPlan ${sessionId}] Plan failed with error: ${results.error}`);
+      } else {
+        console.log(`[executeBrowserPlan ${sessionId}] Plan completed successfully for session.`);
       }
+      overallSuccess = results.success;
     }
   } catch (error) {
-    console.error('Browser execution failed:', error);
+    console.error(`[executeBrowserPlan ${sessionId}] Critical error during browser execution:`, error);
     const session = automationSessions.get(sessionId);
     if (session) {
       session.status = 'failed';
-      session.error = error instanceof Error ? error.message : 'Unknown error';
+      session.error = error instanceof Error ? error.message : 'Unknown critical error';
       session.completedAt = new Date().toISOString();
     }
   } finally {
-    await browser.close();
+    console.log(`[executeBrowserPlan ${sessionId}] Entering finally block. Overall success: ${overallSuccess}. Closing browser...`);
+    await browser.close(); // This is the key call to watch
+    console.log(`[executeBrowserPlan ${sessionId}] Browser closed in finally block. Execution finished for session.`);
   }
 }
 

@@ -69,9 +69,10 @@ async function main() {
     console.log('2. Open: http://localhost:3000');
     console.log('3. Start automating with natural language prompts!');
     console.log('\n💡 Example prompts to try:');
-    console.log('   • "Go to Google and search for \'Next.js documentation\'"');
+    console.log('   • "Go to DuckDuckGo and search for \'Next.js documentation\'"');
     console.log('   • "Visit example.com and take a screenshot"');
     console.log('   • "Navigate to Hacker News and extract the top 5 story titles"');
+    console.log('   • "Search for \'browser automation\' on Brave Search"');
 
   } catch (error) {
     console.error('❌ Setup failed:', error.message);

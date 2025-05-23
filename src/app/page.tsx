@@ -95,7 +95,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-white">
       {/* Subtle grid pattern */}
-      <div className="fixed inset-0 pointer-events-none opacity-[0.02]">
+      <div className="fixed inset-0 pointer-events-none opacity-[0.06]">
         <div className="absolute inset-0" style={{
           backgroundImage: `
             linear-gradient(to right, #000 1px, transparent 1px),

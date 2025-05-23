@@ -74,7 +74,12 @@ npm start
 
 ### Basic Web Search
 ```
-Go to Google and search for 'AI browser automation', then take a screenshot
+Go to DuckDuckGo and search for 'AI browser automation', then take a screenshot
+```
+
+### Alternative Search Engines
+```
+Visit Brave Search and search for 'Next.js documentation'
 ```
 
 ### Data Extraction
@@ -91,6 +96,15 @@ Visit example.com, fill out the contact form with sample data
 ```
 Go to Twitter, search for trending topics, and capture the results
 ```
+
+## 🛡️ reCAPTCHA Avoidance
+
+This tool is configured to prefer **DuckDuckGo** and **Brave Search** over Google to avoid reCAPTCHA challenges that can interrupt automation. Google often detects browser automation and shows reCAPTCHA challenges, while DuckDuckGo and Brave Search are more automation-friendly.
+
+**Recommended search engines:**
+- ✅ **DuckDuckGo** (`duckduckgo.com`) - Best for automation
+- ✅ **Brave Search** (`search.brave.com`) - Good alternative
+- ⚠️ **Google** (`google.com`) - May trigger reCAPTCHA
 
 ## 🔧 Configuration
 

@@ -37,6 +37,35 @@ export const SearchEngineSelectors = {
   ]
 };
 
+export const DuckDuckGoSelectors = {
+  searchInput: [
+    'input[name="q"]',
+    'input#searchbox_input',
+    'input[placeholder*="Search" i]',
+    'input[aria-label*="search" i]',
+    'form input[type="text"]',
+    'input[data-testid="searchbox"]'
+  ],
+  searchButton: [
+    'button[type="submit"]',
+    'input[type="submit"]',
+    'button[aria-label="Search"]',
+    'button:has-text("Search")',
+    'form button[type="submit"]',
+    '.search-btn',
+    '#search_button_homepage'
+  ],
+  firstResult: [
+    '[data-result="1"] h2 a',
+    'article[data-testid="result"]:first-child h2 a',
+    '.result:first-child h2 a',
+    '.result--default:first-child h2 a',
+    'h2 a[href*="http"]:first-of-type',
+    'a[href*="http"] h2:first-of-type',
+    '.search-result:first-child a[href*="http"]'
+  ]
+};
+
 export const BraveSearchSelectors = {
   searchInput: [
     'input[name="q"]',
@@ -59,8 +88,14 @@ export const BraveSearchSelectors = {
   ]
 };
 
-export function createSearchPrompt(searchTerm: string, engine: 'google' | 'brave' = 'google', domain?: string): string {
-  const baseUrl = engine === 'brave' ? 'https://search.brave.com/' : 'https://www.google.com';
+export function createSearchPrompt(searchTerm: string, engine: 'duckduckgo' | 'brave' | 'google' = 'duckduckgo', domain?: string): string {
+  const urls = {
+    duckduckgo: 'https://duckduckgo.com',
+    brave: 'https://search.brave.com',
+    google: 'https://www.google.com'
+  };
+  
+  const baseUrl = urls[engine];
   const clickAction = domain 
     ? `Click the first result that contains '${domain}' in the URL or title`
     : "Click the first search result";
@@ -68,10 +103,14 @@ export function createSearchPrompt(searchTerm: string, engine: 'google' | 'brave
   return `Navigate to ${baseUrl}, search for "${searchTerm}", and ${clickAction}. Take a screenshot of the final page.`;
 }
 
-export function createGoogleSearchPrompt(searchTerm: string, domain?: string): string {
-  return createSearchPrompt(searchTerm, 'google', domain);
+export function createDuckDuckGoSearchPrompt(searchTerm: string, domain?: string): string {
+  return createSearchPrompt(searchTerm, 'duckduckgo', domain);
 }
 
 export function createBraveSearchPrompt(searchTerm: string, domain?: string): string {
   return createSearchPrompt(searchTerm, 'brave', domain);
+}
+
+export function createGoogleSearchPrompt(searchTerm: string, domain?: string): string {
+  return createSearchPrompt(searchTerm, 'google', domain);
 } 

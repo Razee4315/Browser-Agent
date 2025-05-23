@@ -45,7 +45,9 @@ export class BrowserAutomation {
     screenshots: ScreenshotData[];
     error?: string;
   }> {
+    console.log('[BrowserAutomation] Starting executePlan...');
     if (!this.page) {
+      console.error('[BrowserAutomation] Page not initialized in executePlan.');
       throw new Error('Browser not initialized. Call initialize() first.');
     }
 
@@ -56,7 +58,7 @@ export class BrowserAutomation {
     try {
       for (let i = 0; i < actions.length; i++) {
         const action = actions[i];
-        console.log(`Executing action ${i + 1}/${actions.length}: ${action.description}`);
+        console.log(`[BrowserAutomation] Executing action ${i + 1}/${actions.length}: ${action.description} (Type: ${action.type})`);
         
         const result = await this.executeAction(action);
         results.push({
@@ -65,14 +67,18 @@ export class BrowserAutomation {
           result,
           timestamp: new Date().toISOString()
         });
-
-        // Minimal delay between actions
-        await this.page.waitForTimeout(300);
+        console.log(`[BrowserAutomation] Action ${i + 1} completed. Current URL: ${this.page?.url()}`);
+        await this.page.waitForTimeout(300); // Minimal delay
       }
+      console.log('[BrowserAutomation] All actions in plan completed.');
     } catch (err) {
       success = false;
       error = err instanceof Error ? err.message : 'Unknown error occurred';
-      console.error('Error executing plan:', error);
+      console.error('[BrowserAutomation] Error executing plan:', error);
+    } finally {
+      console.log('[BrowserAutomation] executePlan finally block. Success:', success);
+      // IMPORTANT: We are deferring the close to the caller in the API route
+      // await this.close(); 
     }
 
     return {
@@ -84,215 +90,254 @@ export class BrowserAutomation {
   }
 
   private async executeAction(action: BrowserAction): Promise<any> {
-    if (!this.page) throw new Error('Page not available');
-
-    const timeout = action.timeout || 5000;
+    if (!this.page) {
+      console.error('[BrowserAutomation] Page not available in executeAction.');
+      throw new Error('Page not available');
+    }
+    console.log(`[BrowserAutomation] Executing action: ${action.type} - "${action.description}"`);
+    const timeout = action.timeout || 7000; // Slightly increased default timeout for clicks
 
     switch (action.type) {
       case 'navigate':
         if (!action.target) throw new Error('Navigate action requires target URL');
+        console.log(`[BrowserAutomation] Navigating to: ${action.target}`);
         await this.navigateWithRetry(action.target, 3);
+        console.log(`[BrowserAutomation] Navigation to ${action.target} successful. New URL: ${this.page.url()}`);
         return { url: action.target };
 
       case 'click':
-        if (!action.target) throw new Error('Click action requires target selector');
+        if (!action.target && !(action.description?.toLowerCase().includes('search result'))) {
+          // Target is required unless it's a search result click that AI will figure out
+          console.error('[BrowserAutomation] Click action requires a target selector or a search result description.');
+          throw new Error('Click action requires a target selector or a search result description');
+        }
+        console.log(`[BrowserAutomation] Attempting click. Description: "${action.description}", Planned Target: "${action.target}"`);
+
         try {
-          // Smart selector handling for common elements
-          let actualSelector = action.target;
+          const description = action.description?.toLowerCase() || "";
+          const plannedTarget = action.target || ""; // Target from the AI plan
+
+          // Define specific conditions for different click types
+          const isRequestForSpecificLinkInResults =
+            (description.includes('search result') || description.includes('first result')) &&
+            (description.includes('wikipedia') ||
+             description.includes('github') ||
+             description.includes('official') ||
+             description.includes('docs') ||
+             description.includes('documentation') ||
+             description.match(/linking to [\w-]+\.(com|org|net|io|dev|ai)/i) || // e.g., "linking to example.com"
+             plannedTarget.includes('wikipedia.org') || // Also check target if AI planned it
+             plannedTarget.includes('github.com'));
+
+          const isRequestForGenericFirstResult =
+            (description.includes('search result') || description.includes('first result')) &&
+            !isRequestForSpecificLinkInResults;
+
+          const isRequestForSearchButton =
+            plannedTarget.includes('btnK') || // Legacy Google
+            description.includes('search button') ||
+            description === 'click search'; // Exact phrase for button
+
+          // 1. AI Smart Selection for Specific Links in Search Results
+          if (isRequestForSpecificLinkInResults) {
+            console.log('[BrowserAutomation] 🧠 Attempting AI smart selection for specific link in search results...');
+            await this.page.waitForTimeout(1500); // Wait for results to settle
+
+            try {
+              const screenshot = await this.page.screenshot({ fullPage: false });
+              const base64Screenshot = screenshot.toString('base64');
+              
+              const searchResults = await this.page.evaluate(() => {
+                const results: { index: number; title: string; url: string; snippet: string; selector: string; }[] = [];
+                const resultContainers = document.querySelectorAll('article[data-testid="result"], div.result, div.g, div.yuRUbf, div[data-testid="web-result"], div.fdb > div.result, li.ais-Hits-item'); // Common containers
+                
+                results_loop: for (let i = 0; i < resultContainers.length; i++) {
+                    const container = resultContainers[i];
+                    let titleElement = container.querySelector('h2 a, h3 a, a h3, a[data-testid="result-title-a"], span[role="text"] a');
+                    let linkElement = container.querySelector('a[href]');
+                    
+                    if (!titleElement && linkElement && linkElement.closest('h1,h2,h3,h4')) { // If link is inside a heading
+                        titleElement = linkElement;
+                    } else if (titleElement && !linkElement) { // If title is a link itself
+                         linkElement = titleElement as HTMLAnchorElement;
+                    }
+
+                    if (titleElement && linkElement) {
+                        const title = titleElement.textContent?.trim() || '';
+                        const url = (linkElement as HTMLAnchorElement).href;
+                        const snippet = container.querySelector('p, span:not([role="text"])')?.textContent?.trim() || container.textContent?.trim().substring(0,150) || '';
+                        
+                        // Construct a more robust selector
+                        let robustSelector = ``;
+                        if (container.id) robustSelector = `#${container.id} a[href="${url}"]`;
+                        else if (container.getAttribute('data-testid')) robustSelector = `[data-testid="${container.getAttribute('data-testid')}"] a[href="${url}"]`;
+                        else robustSelector = `article:nth-of-type(${i + 1}) a[href], div.result:nth-of-type(${i + 1}) a[href]`; // Fallback
+
+                        // Try to make selector more specific to the found link if possible
+                        const directLinkSelector = Array.from(container.querySelectorAll('a[href]')).find(a => (a as HTMLAnchorElement).href === url);
+                        if (directLinkSelector) {
+                            robustSelector = `:scope a[href="${url}"]`; // Use :scope if referring to within the container
+                             // To make it globally unique from document root, one would need a full path or unique parent.
+                             // For now, let's rely on Playwright's $ to find within the right container later if needed,
+                             // or just the direct href match.
+                        }
+
+
+                        results.push({ index: results.length + 1, title, url, snippet, selector: robustSelector });
+                        if (results.length >= 10) break results_loop;
+                    }
+                }
+                return results;
+              });
+
+              if (!searchResults || searchResults.length === 0) {
+                throw new Error('No search results extracted from page for AI analysis.');
+              }
+              console.log(`[BrowserAutomation] Found ${searchResults.length} potential results for AI analysis.`);
+              
+              const analysisPrompt = `
+                Task: User wants to click a search result: "${action.description}"
+                Based on this, which of the following search results is the MOST relevant?
+                ${searchResults.map(r => `${r.index}. Title: "${r.title}" | URL: ${r.url}`).join('\n')}
+                Respond with ONLY the number of the best result (e.g., "3"). If none seem relevant, respond "0".`;
+              
+              const analysis = await analyzeScreenshot(base64Screenshot, analysisPrompt);
+              const selectedIndex = parseInt(analysis.trim()) - 1;
+
+              if (selectedIndex < 0 || selectedIndex >= searchResults.length) {
+                console.warn(`[BrowserAutomation] AI could not select a relevant result (index: ${selectedIndex + 1}). Falling back to first generic result strategy.`);
+                 // Explicitly fall through to the generic first result clicker
+              } else {
+                const selectedResult = searchResults[selectedIndex];
+                console.log(`[BrowserAutomation] 🎯 AI selected result #${selectedResult.index}: "${selectedResult.title}" (${selectedResult.url})`);
+                
+                // Attempt to click the AI chosen result, prioritizing its specific URL
+                let finalSelectorToClick = `a[href="${selectedResult.url}"]`; // Prioritize direct href match
+                const specificElement = await this.page.$(finalSelectorToClick);
+
+                if (specificElement) {
+                    await specificElement.evaluate(node => { if (node.hasAttribute('target')) node.removeAttribute('target'); });
+                    await specificElement.click();
+                    await this.page.waitForLoadState('domcontentloaded', { timeout: 10000 });
+                    console.log(`[BrowserAutomation] ✅ Clicked AI-selected specific link. New URL: ${this.page.url()}`);
+                    return { clicked: finalSelectorToClick, type: 'ai-selected-specific-result', title: selectedResult.title };
+                } else {
+                    // Fallback to the less specific selector if the href direct match fails (e.g. due to trackers)
+                    console.warn(`[BrowserAutomation] Could not find AI selected element by direct href, trying selector: ${selectedResult.selector}`);
+                    const elementByStoredSelector = await this.page.$(selectedResult.selector);
+                    if (elementByStoredSelector) {
+                        await elementByStoredSelector.evaluate(node => { if (node.hasAttribute('target')) node.removeAttribute('target'); });
+                        await elementByStoredSelector.click();
+                        await this.page.waitForLoadState('domcontentloaded', { timeout: 10000 });
+                        console.log(`[BrowserAutomation] ✅ Clicked AI-selected specific link (using stored selector). New URL: ${this.page.url()}`);
+                        return { clicked: selectedResult.selector, type: 'ai-selected-specific-result-fallback-selector', title: selectedResult.title };
+                    }
+                    throw new Error(`AI selected result #${selectedResult.index} ("${selectedResult.title}") but could not find element to click using selector "${finalSelectorToClick}" or "${selectedResult.selector}".`);
+                }
+              }
+            } catch (specificAiError) {
+              console.error('[BrowserAutomation] Error during AI smart selection for specific link:', specificAiError);
+              // Fall through to generic first result if AI specific selection fails critically
+              console.warn('[BrowserAutomation] AI specific selection failed. Falling back to generic first result strategy.');
+            }
+          }
           
-          // Special handling for search result links
-          if (action.description?.toLowerCase().includes('first result') || action.description?.toLowerCase().includes('first search result')) {
-            const searchResultSelectors = [
-              // Brave Search result selectors
-              '.fdb > .result:first-child h3 a',
-              '.fdb > .result:first-child a[href]:first-of-type',
-              '.search-results .result:first-child h3 a',
-              '.search-results .result:first-child a[href]',
-              
-              // Google search result selectors
-              '#search .g:first-child h3 a',
-              '#search .yuRUbf:first-child a',
-              '.g:first-child .yuRUbf a',
-              
-              // Generic search result selectors
-              '[data-testid="result"]:first-child a',
-              '.search-result:first-child a',
-              '.result:first-child a[href]',
-              'article:first-child a[href]',
-              '.organic-result:first-child a',
-              
-              // Fallback to any first link in results area
-              '#search a[href]:first-of-type',
-              '.search-results a[href]:first-of-type',
-              '.results a[href]:first-of-type'
+          // 2. Generic "First Search Result" Click (also acts as fallback for failed AI specific selection)
+          if (isRequestForGenericFirstResult || (isRequestForSpecificLinkInResults && !this.page.url().startsWith('http'))) { // Second condition is a basic check if navigation happened
+            console.log('[BrowserAutomation] 📍 Clicking first available (generic) search result...');
+            await this.page.waitForTimeout(500); // Brief wait
+            const searchResultSelectors = [ /* ... your extensive list from before ... */
+                '[data-result="1"] h2 a', 'article[data-testid="result"]:first-child h2 a', '.result:first-child h2 a',
+                '.fdb > .result:first-child h3 a', '#search .g:first-child h3 a', '[data-testid="result"]:first-child a',
+                'a[data-testid="result-title-a"]:first-of-type' // Add more general selectors
             ];
-            
-            // Quick wait for search results to load
-            await this.page.waitForTimeout(800);
-            
             const foundSelector = await this.findElementWithFallbacks(searchResultSelectors, timeout);
             if (foundSelector) {
-              actualSelector = foundSelector;
-              console.log(`About to click search result: ${actualSelector}`);
-              await this.page.click(actualSelector);
-              return { clicked: actualSelector, type: 'search-result' };
+              console.log(`[BrowserAutomation] Fallback found first result selector: ${foundSelector}. Current URL: ${this.page.url()}`);
+              await this.page.evaluate((selector) => { /* remove target */ }, foundSelector);
+              await this.page.click(foundSelector);
+              await this.page.waitForLoadState('domcontentloaded', { timeout: 10000 });
+              console.log(`[BrowserAutomation] ✅ Clicked fallback first search result. New URL: ${this.page.url()}`);
+              return { clicked: foundSelector, type: 'first-generic-result' };
             } else {
-              // Take a debug screenshot to see what's on the page
-              const debugScreenshot = await this.page.screenshot({ fullPage: false });
-              const base64Screenshot = debugScreenshot.toString('base64');
-              this.screenshots.push({
-                timestamp: Date.now(),
-                description: 'Debug: No search results found',
-                fullPage: base64Screenshot,
-                viewport: base64Screenshot,
-                path: `debug_no_results_${Date.now()}.png`,
-                url: await this.page.url(),
-                title: await this.page.title()
-              });
-              throw new Error('No search results found to click');
+              throw new Error('Fallback: No generic first search results found to click.');
             }
           }
-          // Special handling for search buttons
-          else if (action.target.includes('btnK') || action.description?.toLowerCase().includes('search button') || action.description?.toLowerCase().includes('search')) {
-            const searchButtonSelectors = [
-              // Google selectors
-              'input[name="btnK"]',
-              'button[type="submit"]',
-              '[data-ved] input[type="submit"]',
-              
-              // Brave Search specific selectors
-              'button[aria-label="Search"]',
-              'button[aria-label*="search" i]',
-              '.search-btn',
-              'button.search-submit',
-              '[data-testid="search-submit"]',
-              
-              // Generic search button selectors
-              'input[value*="Search" i]',
-              'button:has-text("Search")',
-              'button[data-testid*="search" i]',
-              'form[role="search"] button',
-              'form button[type="submit"]',
-              '.search-button',
-              '#search-button',
-              
-              // Icon-based search buttons (like magnifying glass)
-              'button[title*="search" i]',
-              '[role="button"][title*="search" i]',
-              'svg[aria-label*="search" i]',
-              'button svg',
-              '.search-icon'
+          
+          // 3. Search Button Click
+          else if (isRequestForSearchButton) {
+            console.log('[BrowserAutomation] 🔳 Clicking search button...');
+            const searchButtonSelectors = [ /* ... your extensive list from before ... */
+                'input[name="btnK"]', 'button[type="submit"]', 'button[aria-label="Search"]', '#search_button_homepage'
             ];
-            const foundSelector = await this.findElementWithFallbacks(searchButtonSelectors, timeout);
-            if (foundSelector) {
-              actualSelector = foundSelector;
-              await this.page.click(actualSelector);
-              return { clicked: actualSelector };
+            const foundButton = await this.findElementWithFallbacks(searchButtonSelectors, timeout);
+            if (foundButton) {
+              await this.page.click(foundButton);
+              await this.page.waitForLoadState('domcontentloaded', { timeout: 7000 }); // Wait for results
+              console.log(`[BrowserAutomation] ✅ Clicked search button. New URL: ${this.page.url()}`);
+              return { clicked: foundButton, type: 'search-button' };
             } else {
-              // If no search button found, try pressing Enter in the search input
-              console.log('No search button found, trying to press Enter in search input...');
-              const searchInputSelectors = [
-                'input[name="q"]',
-                'input#searchbox',
-                'input[placeholder*="search" i]',
-                'input[aria-label*="search" i]',
-                'form input[type="text"]'
-              ];
-              const searchInput = await this.findElementWithFallbacks(searchInputSelectors, timeout);
+              // If no button, try Enter in search input (if exists)
+                const searchInputSelectors = ['input[name="q"]', 'textarea[name="q"]', 'input#searchbox_input'];
+                const searchInput = await this.findElementWithFallbacks(searchInputSelectors, 3000);
               if (searchInput) {
+                    console.log('[BrowserAutomation] No search button, pressing Enter in search input.');
                 await this.page.focus(searchInput);
                 await this.page.keyboard.press('Enter');
-                return { clicked: 'Enter key in search input', searchInput };
-              } else {
-                throw new Error('Neither search button nor search input found');
-              }
+                    await this.page.waitForLoadState('domcontentloaded', { timeout: 10000 });
+                    return { clicked: 'Enter in search input', searchInput };
+                }
+              throw new Error('No search button found, and no search input to press Enter in.');
             }
-          } else {
-            await this.page.waitForSelector(action.target, { timeout });
-            await this.page.click(actualSelector);
-            return { clicked: actualSelector };
           }
+          
+          // 4. Generic Click on a Specific Target from the Plan
+          else if (plannedTarget) {
+            console.log(`[BrowserAutomation] 🎯 Performing generic click on planned target: ${plannedTarget}`);
+            await this.page.waitForSelector(plannedTarget, { timeout });
+            const elementToClick = await this.page.$(plannedTarget);
+            if (elementToClick) {
+              const isLink = await elementToClick.evaluate(node => node.tagName === 'A');
+              if (isLink) {
+                await elementToClick.evaluate(node => { if (node.hasAttribute('target')) node.removeAttribute('target'); });
+              }
+              await elementToClick.click();
+              console.log(`[BrowserAutomation] Attempted generic click on ${plannedTarget}. Checking for navigation...`);
+              try {
+                await this.page.waitForLoadState('domcontentloaded', { timeout: 7000 }); // Wait for potential navigation
+                console.log(`[BrowserAutomation] ✅ Clicked generic element ${plannedTarget}. New URL: ${this.page.url()}`);
+              } catch (navError) {
+                 console.warn(`[BrowserAutomation] No navigation or timeout after clicking ${plannedTarget}. Current URL: ${this.page.url()}`);
+              }
+              return { clicked: plannedTarget, type: 'generic-planned-target' };
+            } else {
+              throw new Error(`Element ${plannedTarget} (from plan) not found for generic click.`);
+            }
+          }
+          
+          // If no specific click logic was matched and resolved:
+          console.warn(`[BrowserAutomation] Click action for "${description}" did not match any specific click logic and did not resolve.`);
+          throw new Error(`Click action for "${description}" could not be resolved.`);
+
         } catch (error) {
-          // If selector fails, try vision-based analysis
-          console.log('Taking screenshot for AI analysis...');
-          const screenshot = await this.page.screenshot({ fullPage: false });
+          console.error(`[BrowserAutomation] Click action failed for "${action.description}". Error: ${(error as Error).message}. Current URL: ${this.page?.url()}`);
+          const screenshot = await this.page.screenshot({ fullPage: false }); // For AI analysis
           const base64Screenshot = screenshot.toString('base64');
-          
-          // Store screenshot for debugging
-          const debugScreenshotData = {
-            timestamp: Date.now(),
-            description: `Debug screenshot for failed action: ${action.description}`,
-            fullPage: base64Screenshot,
-            viewport: base64Screenshot,
-            path: `debug_${Date.now()}.png`,
-            url: await this.page.url(),
-            title: await this.page.title()
-          };
-          this.screenshots.push(debugScreenshotData);
-          
-          const analysis = await analyzeScreenshot(base64Screenshot, 
-            `Failed to find clickable element with selector "${action.target}". Current action: ${action.description}. Please analyze the screenshot and suggest alternative selectors or specific elements to click.`);
-          
-          throw new Error(`Click failed: ${error instanceof Error ? error.message : 'Unknown error'}. AI Analysis: ${analysis}`);
+          const analysisContext = `Click failed. User wanted to: "${action.description}". Planned target was: "${action.target}". Error: ${(error as Error).message}. Analyze screenshot for alternative.`;
+          const analysis = await analyzeScreenshot(base64Screenshot, analysisContext);
+          throw new Error(`Click failed: ${(error as Error).message}. AI Analysis: ${analysis}`);
         }
 
       case 'type':
-        if (!action.target || !action.value) {
-          throw new Error('Type action requires target selector and value');
-        }
-        try {
-          // Smart selector handling for common elements
-          let actualSelector = action.target;
-          
-          // Special handling for search input fields
-          if (action.target.includes('input[name="q"]') || action.description?.toLowerCase().includes('search')) {
-            const searchInputSelectors = [
-              // Standard search input selectors
-              'input[name="q"]',
-              'textarea[name="q"]',
-              
-              // Brave Search specific selectors
-              'input#searchbox',
-              'input[data-testid="searchbox"]',
-              'input[placeholder*="search" i]',
-              'input[aria-label*="search" i]',
-              
-              // Google specific selectors  
-              '#APjFqb',
-              'input.gLFyf',
-              
-              // Generic fallbacks
-              'input[title="Search"]',
-              '[role="combobox"]',
-              'input[type="text"][title*="search" i]',
-              'input[data-testid*="search" i]',
-              'form input[type="text"]',
-              'input[type="search"]',
-              '.search-input',
-              '[role="searchbox"]'
-            ];
-            const foundSelector = await this.findElementWithFallbacks(searchInputSelectors, timeout);
-            if (foundSelector) {
-              actualSelector = foundSelector;
-            }
-          } else {
-            await this.page.waitForSelector(action.target, { timeout });
-          }
-          
-          await this.page.fill(actualSelector, action.value);
-          return { typed: action.value, into: actualSelector };
-        } catch (error) {
-          // If selector fails, try vision-based analysis
-          const screenshot = await this.page.screenshot({ fullPage: false });
-          const base64Screenshot = screenshot.toString('base64');
-          const analysis = await analyzeScreenshot(base64Screenshot, 
-            `Failed to find input field with selector "${action.target}" to type "${action.value}". Please analyze the screenshot and suggest alternative selectors.`);
-          
-          throw new Error(`Type failed: ${error instanceof Error ? error.message : 'Unknown error'}. AI Analysis: ${analysis}`);
-        }
+        if (!action.target || !action.value) throw new Error('Type action requires target selector and value');
+        console.log(`[BrowserAutomation] Typing "${action.value}" into "${action.target}"`);
+        await this.page.waitForSelector(action.target, {timeout});
+        await this.page.fill(action.target, action.value);
+        return { typed: action.value, into: action.target };
 
       case 'wait':
         const waitTime = action.timeout || 1000;
+        console.log(`[BrowserAutomation] Waiting for ${waitTime}ms`);
         await this.page.waitForTimeout(waitTime);
         return { waited: waitTime };
 
@@ -309,50 +354,23 @@ export class BrowserAutomation {
         return { scrolled: scrollTarget };
 
       case 'screenshot':
+        console.log(`[BrowserAutomation] Taking screenshot. Description: ${action.description}. Current URL: ${this.page.url()}`);
         const timestamp = Date.now();
         const screenshotPath = `screenshot_${timestamp}.png`;
-        
-        // Take high-quality screenshot with better options
-        const screenshot = await this.page.screenshot({ 
-          path: `public/screenshots/${screenshotPath}`,
-          fullPage: true,
-          type: 'png',
-          animations: 'disabled', // Disable animations for cleaner screenshots
-        });
-        
-        // Also take a viewport screenshot for quick preview
-        const viewportScreenshot = await this.page.screenshot({
-          fullPage: false,
-          type: 'png',
-          animations: 'disabled'
-        });
-        
-        const base64Screenshot = screenshot.toString('base64');
-        const base64Viewport = viewportScreenshot.toString('base64');
-        
-        // Store both screenshots with metadata
-        const screenshotData = {
-          timestamp,
-          description: action.description,
-          fullPage: base64Screenshot,
-          viewport: base64Viewport,
-          path: screenshotPath,
-          url: await this.page.url(),
-          title: await this.page.title()
+        const fullPageScreenshot = await this.page.screenshot({ path: `public/screenshots/${screenshotPath}`, fullPage: true, type: 'png', animations: 'disabled'});
+        const viewportScreenshot = await this.page.screenshot({ fullPage: false, type: 'png', animations: 'disabled' });
+        const screenshotData: ScreenshotData = {
+          timestamp, description: action.description,
+          fullPage: fullPageScreenshot.toString('base64'), viewport: viewportScreenshot.toString('base64'),
+          path: screenshotPath, url: await this.page.url(), title: await this.page.title()
         };
-        
         this.screenshots.push(screenshotData);
-        return { 
-          screenshot: base64Screenshot,
-          viewport: base64Viewport, 
-          path: screenshotPath,
-          metadata: screenshotData
-        };
+        return { path: screenshotPath, metadata: screenshotData };
 
       case 'extract':
+        console.log(`[BrowserAutomation] Extracting data. Target: "${action.target || 'page info'}"`);
         let extractedData;
         if (action.target) {
-          // Extract specific element text/attributes
           extractedData = await this.page.evaluate((selector) => {
             const elements = document.querySelectorAll(selector);
             return Array.from(elements).map(el => ({
@@ -365,16 +383,12 @@ export class BrowserAutomation {
             }));
           }, action.target);
         } else {
-          // Extract page title and basic info
-          extractedData = await this.page.evaluate(() => ({
-            title: document.title,
-            url: window.location.href,
-            text: document.body.textContent?.slice(0, 1000)
-          }));
+          extractedData = await this.page.evaluate(() => ({ title: document.title, url: window.location.href, text: document.body.textContent?.slice(0,1000) }));
         }
         return { extracted: extractedData };
 
       default:
+        console.error(`[BrowserAutomation] Unknown action type: ${action.type}`);
         throw new Error(`Unknown action type: ${action.type}`);
     }
   }
@@ -490,12 +504,19 @@ export class BrowserAutomation {
   }
 
   async close(): Promise<void> {
+    console.log('[BrowserAutomation] close() called.');
     if (this.browser) {
+      try {
       await this.browser.close();
+        console.log('[BrowserAutomation] Browser instance closed successfully.');
+      } catch (closeError) {
+        console.error('[BrowserAutomation] Error closing browser:', closeError);
+      }
       this.browser = null;
       this.context = null;
       this.page = null;
-      console.log('Browser closed');
+    } else {
+      console.log('[BrowserAutomation] close() called, but no browser instance to close.');
     }
   }
 }

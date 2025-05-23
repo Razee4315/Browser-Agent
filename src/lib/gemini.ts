@@ -52,19 +52,29 @@ export async function generateAutomationPlan(userPrompt: string): Promise<Automa
     }
     
     Important guidelines:
-    - Use robust CSS selectors with fallbacks (e.g., for Google search: 'input[name="q"], input[title="Search"], textarea[name="q"], [role="combobox"]')
+    - Use robust CSS selectors with fallbacks (e.g., for search engines: 'input[name="q"], input[title="Search"], textarea[name="q"], [role="combobox"]')
     - Include reasonable timeouts (in milliseconds, use 3000-5000ms for most elements, 8000ms only for navigation)
     - Break complex tasks into efficient steps - avoid unnecessary wait actions
     - Always start with a "navigate" action if a URL is needed
     - Use "wait" actions sparingly - only when absolutely necessary (like after navigation)
     - Include a "screenshot" action at the end to capture results
     - For "extract" actions, specify what data to extract in the description
-    - For Google searches, use selectors like: input[name="q"], textarea[name="q"], or [role="combobox"]
+    - PREFER DuckDuckGo (https://duckduckgo.com) or Brave Search (https://search.brave.com) over Google to avoid reCAPTCHA issues
+    - For DuckDuckGo searches, use selectors like: input[name="q"], input#searchbox_input, input[placeholder*="Search" i]
     - For Brave Search, use selectors like: input[name="q"], input#searchbox, input[placeholder*="search" i]
-    - For search buttons, try: input[name="btnK"], button[type="submit"], [role="button"], input[value*="Search" i]
-    - For clicking search results, use descriptions like "Click the first search result" and the system will auto-detect
+    - For Google searches (only if specifically requested), use selectors like: input[name="q"], textarea[name="q"], or [role="combobox"]
+    - For search buttons, try: button[type="submit"], input[type="submit"], button[aria-label="Search"], input[name="btnK"]
+    - For clicking search results, be SPECIFIC about which result to click:
+      * If user wants Wikipedia, use: "Click the search result linking to Wikipedia"
+      * If user wants GitHub, use: "Click the search result linking to GitHub"
+      * If user wants official docs, use: "Click the search result linking to the official documentation"
+      * If user wants a specific domain, mention it: "Click the search result linking to example.com"
+      * Only use generic "Click the first search result" if no specific preference is mentioned
     - Use faster timeouts (3000-5000ms) for most actions, 8000ms only for navigation
     - Minimize wait actions - modern browsers load fast, don't wait unnecessarily
+    - ADD a small wait (1-2 seconds) after search operations before trying to click results
+    - For non-search automations, consider direct navigation to specific websites instead of searching
+    - If search fails, suggest alternative approaches like direct website navigation
     
     Respond ONLY with valid JSON, no additional text.
   `;

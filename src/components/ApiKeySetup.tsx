@@ -50,7 +50,7 @@ export default function ApiKeySetup({ onApiKeySubmit }: ApiKeySetupProps) {
   return (
     <div className="min-h-screen bg-white flex items-center justify-center p-4">
       {/* Subtle grid pattern */}
-      <div className="fixed inset-0 pointer-events-none opacity-[0.02]">
+      <div className="fixed inset-0 pointer-events-none opacity-[0.06]">
         <div className="absolute inset-0" style={{
           backgroundImage: `
             linear-gradient(to right, #000 1px, transparent 1px),

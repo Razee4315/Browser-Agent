@@ -1,119 +1,100 @@
-# 🤖 Browser Automation Agent
+# Browser Automation Agent
 
-A minimalistic, AI-powered browser automation tool built with **Next.js** and **Gemini 2.0 Vision AI**. Transform natural language into intelligent browser automation with advanced visual understanding capabilities.
+An AI-powered browser automation tool built with Next.js and Gemini 2.0 Vision AI. Transform natural language into browser automation with visual understanding.
 
 ![Browser Automation Agent](https://img.shields.io/badge/AI-Gemini%202.0-black?style=flat-square) ![Next.js](https://img.shields.io/badge/Next.js-14-black?style=flat-square) ![TypeScript](https://img.shields.io/badge/TypeScript-5-black?style=flat-square) ![Tailwind](https://img.shields.io/badge/Tailwind-3-black?style=flat-square)
 
-## ✨ Features
+## Features
 
-- **🧠 AI-Powered Planning**: Convert natural language to browser automation steps
-- **👁️ Vision AI**: Advanced screenshot analysis and visual understanding  
-- **🎯 Smart Selectors**: Intelligent element detection with fallback strategies
-- **📸 High-Quality Screenshots**: Automatic capture with metadata and analysis
-- **🔄 Real-Time Monitoring**: Live progress tracking and status updates
-- **🎨 Minimalist Design**: Clean black & white interface focused on functionality
-- **🔐 Secure API Key Management**: Local storage with validation
+- Convert natural language to browser automation steps
+- Advanced screenshot analysis and visual understanding
+- Intelligent element detection with fallback strategies
+- Automatic screenshot capture with metadata
+- Real-time progress tracking
+- Clean, minimalist interface
+- Secure API key management
 
-## 🚀 Live Demo
+## Live Demo
 
-**[Try it now →](https://razee4315.github.io/browser-automation-agent)**
+[Try it now](https://razee4315.github.io/browser-automation-agent)
 
-## 🛠️ Tech Stack
+## Tech Stack
 
-- **Frontend**: Next.js 14, TypeScript, Tailwind CSS
-- **AI Engine**: Google Gemini 2.0 Flash Experimental
-- **Browser Automation**: Playwright
-- **Deployment**: GitHub Pages
+- Frontend: Next.js 14, TypeScript, Tailwind CSS
+- AI Engine: Google Gemini 2.0
+- Browser Automation: Playwright
+- Deployment: GitHub Pages
 
-## 📋 Prerequisites
+## Prerequisites
 
-- **Gemini API Key**: Get yours from [Google AI Studio](https://aistudio.google.com/app/apikey)
-- **Node.js**: Version 18 or higher
+- Gemini API Key from [Google AI Studio](https://aistudio.google.com/app/apikey)
+- Node.js 18 or higher
 
-## 🏃‍♂️ Quick Start
+## Quick Start
 
-### 1. Clone the Repository
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/razee4315/browser-automation-agent.git
+   cd browser-automation-agent
+   ```
 
-```bash
-git clone https://github.com/razee4315/browser-automation-agent.git
-cd browser-automation-agent
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. (Optional) Create `.env.local` with your API key:
+   ```env
+   GEMINI_API_KEY=your_gemini_api_key_here
+   ```
+   > Note: The app will prompt for your API key on first use if not set in environment.
+
+4. Start the development server:
+   ```bash
+   npm run dev
+   ```
+   Open [http://localhost:3000](http://localhost:3000) to view the app.
+
+5. For production build:
+   ```bash
+   npm run build
+   npm start
+   ```
+
+## Usage Examples
+
 ```
-
-### 2. Install Dependencies
-
-```bash
-npm install
-```
-
-### 3. Set Up Environment (Optional)
-
-Create a `.env.local` file:
-
-```env
-GEMINI_API_KEY=your_gemini_api_key_here
-```
-
-> **Note**: The app will prompt for your API key on first use if not set in environment.
-
-### 4. Run Development Server
-
-```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) to view the app.
-
-### 5. Build for Production
-
-```bash
-npm run build
-npm start
-```
-
-## 🎯 Usage Examples
-
-### Basic Web Search
-```
+# Basic web search
 Go to DuckDuckGo and search for 'AI browser automation', then take a screenshot
-```
 
-### Alternative Search Engines
-```
+# Alternative search
 Visit Brave Search and search for 'Next.js documentation'
-```
 
-### Data Extraction
-```
+# Data extraction
 Navigate to Hacker News and extract the top 5 story titles
-```
 
-### Form Interaction
-```
+# Form interaction
 Visit example.com, fill out the contact form with sample data
-```
 
-### Social Media Automation
-```
+# Social media
 Go to Twitter, search for trending topics, and capture the results
 ```
 
-## 🛡️ reCAPTCHA Avoidance
+## reCAPTCHA Avoidance
 
-This tool is configured to prefer **DuckDuckGo** and **Brave Search** over Google to avoid reCAPTCHA challenges that can interrupt automation. Google often detects browser automation and shows reCAPTCHA challenges, while DuckDuckGo and Brave Search are more automation-friendly.
+To avoid reCAPTCHA challenges, the tool prefers DuckDuckGo and Brave Search over Google, which are more automation-friendly.
 
-**Recommended search engines:**
-- ✅ **DuckDuckGo** (`duckduckgo.com`) - Best for automation
-- ✅ **Brave Search** (`search.brave.com`) - Good alternative
-- ⚠️ **Google** (`google.com`) - May trigger reCAPTCHA
+Recommended search engines:
+- DuckDuckGo (duckduckgo.com) - Best for automation
+- Brave Search (search.brave.com) - Good alternative
+- Google (google.com) - May trigger reCAPTCHA
 
-## 🔧 Configuration
+## Configuration
 
 ### API Key Setup
 
-1. Visit [Google AI Studio](https://aistudio.google.com/app/apikey)
-2. Sign in with your Google account
-3. Create a new API key
-4. Enter it when prompted in the app
+1. Get your API key from [Google AI Studio](https://aistudio.google.com/app/apikey)
+2. Enter it in the app when prompted
 
 ### Environment Variables
 
@@ -121,83 +102,70 @@ This tool is configured to prefer **DuckDuckGo** and **Brave Search** over Googl
 |----------|-------------|----------|
 | `GEMINI_API_KEY` | Your Gemini API key | Optional* |
 
-*API key can be entered directly in the app interface
+*API key can be entered in the app interface
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 src/
 ├── app/                    # Next.js App Router
-│   ├── api/               # API routes
-│   │   ├── automation/    # Automation endpoints
-│   │   └── validate-key/  # API key validation
-│   └── page.tsx          # Main application page
-├── components/            # React components
-│   ├── ApiKeySetup.tsx   # API key authentication
-│   ├── AutomationForm.tsx # User input form
-│   ├── AutomationStatus.tsx # Progress tracking
-│   └── AutomationResults.tsx # Results display
-└── lib/                  # Utility libraries
-    ├── browser.ts        # Playwright automation
-    ├── gemini.ts         # Gemini AI integration
-    └── debug-helpers.ts  # Debugging utilities
+│   ├── api/                # API routes
+│   └── page.tsx            # Main page
+├── components/             # React components
+│   ├── ApiKeySetup.tsx     # API key auth
+│   ├── AutomationForm.tsx  # User input
+│   ├── AutomationStatus.tsx # Progress
+│   └── AutomationResults.tsx # Results
+└── lib/                   # Utilities
+    ├── browser.ts         # Playwright
+    ├── gemini.ts          # Gemini AI
+    └── debug-helpers.ts   # Debugging
 ```
 
-## 🎨 Design Philosophy
+## Design
 
-This project embraces **Swiss design principles**:
+- Minimalist interface
+- Clean typography
+- Monochromatic color scheme
+- Focus on functionality
+- Accessible design
 
-- **Minimalism**: Clean lines, ample white space
-- **Typography**: Light fonts with elegant spacing
-- **Monochromatic**: Sophisticated black & white palette
-- **Functionality**: Purpose-driven interface design
-- **Accessibility**: High contrast for optimal readability
+## Security & Privacy
 
-## 🔒 Security & Privacy
+- API keys stored in browser localStorage
+- No data collection
+- HTTPS required
+- Client-side processing
 
-- **Local API Key Storage**: Keys stored in browser localStorage
-- **No Data Collection**: Your automation data stays private
-- **Secure Communication**: HTTPS enforced for all requests
-- **Client-Side Processing**: Sensitive operations run locally
+## Browser Support
 
-## 📱 Browser Support
+- Chrome/Chromium
+- Firefox
+- Safari
+- Edge
 
-- **Chrome/Chromium**: ✅ Fully supported
-- **Firefox**: ✅ Supported
-- **Safari**: ✅ Supported
-- **Edge**: ✅ Supported
+## Contributing
 
-## 🤝 Contributing
+Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md).
 
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
+1. Fork the repo
+2. Create a feature branch
+3. Commit your changes
+4. Push and open a Pull Request
 
-### Development Setup
+## Contributors
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 👥 Contributors
-
-<div align="center">
-
-### 🧑‍💻 Development Team
+### Development Team
 
 **Saqlain Abbas**  
-*Lead Developer & AI Integration*  
-[![GitHub](https://img.shields.io/badge/GitHub-razee4315-black?style=flat-square&logo=github)](https://github.com/razee4315)  
-[![Email](https://img.shields.io/badge/Email-saqlainrazee%40gmail.com-black?style=flat-square&logo=gmail)](mailto:saqlainrazee@gmail.com)
+Lead Developer & AI Integration  
+[GitHub](https://github.com/razee4315) | [Email](mailto:saqlainrazee@gmail.com)
 
 **Aleena Tahir**  
-*Frontend Developer & UI/UX Design*  
-[![GitHub](https://img.shields.io/badge/GitHub-AleenaTahir1-black?style=flat-square&logo=github)](https://github.com/AleenaTahir1)  
-[![Email](https://img.shields.io/badge/Email-aleenatahirf23%40nutech.edu.pk-black?style=flat-square&logo=gmail)](mailto:aleenatahirf23@nutech.edu.pk)
+Frontend Developer & UI/UX  
+[GitHub](https://github.com/AleenaTahir1) | [Email](mailto:aleenatahirf23@nutech.edu.pk)
 
-</div>
-
-## 📄 License
+## License
 
 This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
 

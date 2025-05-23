@@ -2,8 +2,6 @@
 
 An AI-powered browser automation tool built with Next.js and Gemini 2.0 Vision AI. Transform natural language into browser automation with visual understanding.
 
-![Browser Automation Agent](https://img.shields.io/badge/AI-Gemini%202.0-black?style=flat-square) ![Next.js](https://img.shields.io/badge/Next.js-14-black?style=flat-square) ![TypeScript](https://img.shields.io/badge/TypeScript-5-black?style=flat-square) ![Tailwind](https://img.shields.io/badge/Tailwind-3-black?style=flat-square)
-
 ## Features
 
 - Convert natural language to browser automation steps
@@ -13,17 +11,6 @@ An AI-powered browser automation tool built with Next.js and Gemini 2.0 Vision A
 - Real-time progress tracking
 - Clean, minimalist interface
 - Secure API key management
-
-## Live Demo
-
-[Try it now](https://razee4315.github.io/browser-automation-agent)
-
-## Tech Stack
-
-- Frontend: Next.js 14, TypeScript, Tailwind CSS
-- AI Engine: Google Gemini 2.0
-- Browser Automation: Playwright
-- Deployment: GitHub Pages
 
 ## Prerequisites
 
@@ -61,33 +48,6 @@ An AI-powered browser automation tool built with Next.js and Gemini 2.0 Vision A
    npm start
    ```
 
-## Usage Examples
-
-```
-# Basic web search
-Go to DuckDuckGo and search for 'AI browser automation', then take a screenshot
-
-# Alternative search
-Visit Brave Search and search for 'Next.js documentation'
-
-# Data extraction
-Navigate to Hacker News and extract the top 5 story titles
-
-# Form interaction
-Visit example.com, fill out the contact form with sample data
-
-# Social media
-Go to Twitter, search for trending topics, and capture the results
-```
-
-## reCAPTCHA Avoidance
-
-To avoid reCAPTCHA challenges, the tool prefers DuckDuckGo and Brave Search over Google, which are more automation-friendly.
-
-Recommended search engines:
-- DuckDuckGo (duckduckgo.com) - Best for automation
-- Brave Search (search.brave.com) - Good alternative
-- Google (google.com) - May trigger reCAPTCHA
 
 ## Configuration
 
@@ -122,13 +82,6 @@ src/
     └── debug-helpers.ts   # Debugging
 ```
 
-## Design
-
-- Minimalist interface
-- Clean typography
-- Monochromatic color scheme
-- Focus on functionality
-- Accessible design
 
 ## Security & Privacy
 
@@ -158,37 +111,16 @@ Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTIN
 ### Development Team
 
 **Saqlain Abbas**  
-Lead Developer & AI Integration  
+Developer  
 [GitHub](https://github.com/razee4315) | [Email](mailto:saqlainrazee@gmail.com)
 
 **Aleena Tahir**  
-Frontend Developer & UI/UX  
+Developer  
 [GitHub](https://github.com/AleenaTahir1) | [Email](mailto:aleenatahirf23@nutech.edu.pk)
 
 ## License
 
 This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- **Google AI**: For the powerful Gemini 2.0 API
-- **Playwright Team**: For robust browser automation
-- **Next.js Team**: For the excellent React framework
-- **Tailwind CSS**: For utility-first styling
-- **Open Source Community**: For inspiration and tools
-
-## 📈 Roadmap
-
-- [ ] **Multi-Model Support**: Add support for other AI models
-- [ ] **Advanced Scheduling**: Cron-based automation scheduling  
-- [ ] **Team Collaboration**: Share automation workflows
-- [ ] **Mobile App**: Native mobile application
-- [ ] **Plugin System**: Extensible automation plugins
-- [ ] **Cloud Deployment**: One-click cloud hosting
-
-## 🐛 Issues & Support
-
-Found a bug? Have a feature request? Please check our [Issues](https://github.com/razee4315/browser-automation-agent/issues) page.
 
 For support, email us at [saqlainrazee@gmail.com](mailto:saqlainrazee@gmail.com)
 
